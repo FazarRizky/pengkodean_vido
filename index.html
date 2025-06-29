@@ -408,14 +408,21 @@
             const file = input.files[0];
             if (file) {
                 const uploadArea = document.getElementById(uploadAreaId);
+                
+                // Ambil elemen input file sebelum mengganti isi HTML
+                const inputClone = input.cloneNode();
+                
                 uploadArea.innerHTML = `
                     <div class="upload-icon">✅</div>
                     <div class="upload-text">File terpilih: ${file.name}</div>
                     <div class="upload-subtext">Ukuran: ${(file.size / 1024 / 1024).toFixed(2)} MB</div>
-                    <input type="file" id="${input.id}" accept="video/*" style="display:none;">
                 `;
+                
+                uploadArea.appendChild(inputClone); // tambahkan input kembali
+                setupFileUpload(uploadAreaId, inputClone.id); // sambungkan lagi event-nya
             }
         }
+
 
         // MJPEG Processing (Intraframe)
         function processMJPEG() {
