@@ -351,7 +351,7 @@
 
             <!-- Steganografi -->
             <div class="card">
-                <h2><span class="icon">🔒</span>Steganografi Video</h2>
+                <h2><span class="icon">🔒</span>Steganografi</h2>
                 <div class="upload-area" id="stegoUpload">
                     <div class="upload-icon">🎭</div>
                     <div class="upload-text">Upload gambar untuk Steganografi</div>
@@ -380,6 +380,7 @@
         let mjpegResult = null;
         let mpegResult = null;
         let stegoResult = null;
+        const { createFFmpeg, fetchFile } = FFmpeg;
 
         // File upload handlers
         function setupFileUpload(uploadAreaId, fileInputId) {
@@ -442,42 +443,37 @@
             loading.classList.add('show');
             output.innerHTML = '';
 
-            // Initialize ffmpeg.wasm
+            // Ambil dari window.FFmpeg
             const { createFFmpeg, fetchFile } = FFmpeg;
             const ffmpeg = createFFmpeg({ log: true });
 
             await ffmpeg.load();
 
-            // Write uploaded file to ffmpeg FS
             ffmpeg.FS('writeFile', 'input.mp4', await fetchFile(file));
 
-            // Run ffmpeg command to re-encode as MJPEG AVI
             await ffmpeg.run(
                 '-i', 'input.mp4',
                 '-c:v', 'mjpeg',
-                '-qscale:v', '3', // quality (lower is better quality, max 31)
+                '-qscale:v', '3',
                 '-an',
                 'output.avi'
             );
 
-            // Read encoded file from ffmpeg FS
             const data = ffmpeg.FS('readFile', 'output.avi');
 
-            // Convert to Blob for download
             const mjpegBlob = new Blob([data.buffer], { type: 'video/avi' });
             const mjpegURL = URL.createObjectURL(mjpegBlob);
 
-            // Display result
             loading.classList.remove('show');
             output.innerHTML = `
                 <div class="success-message">MJPEG encoding berhasil!</div>
                 <video class="video-preview" controls src="${mjpegURL}"></video>
             `;
 
-            // Enable download
             mjpegResult = mjpegBlob;
             document.getElementById('downloadMJPEGBtn').disabled = false;
         }
+
 
         // MPEG Processing (Interframe)
         function processMPEG() {
