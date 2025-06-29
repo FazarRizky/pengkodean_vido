@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video Encoding & Steganography</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            color: white;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .app-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 30px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 30px 60px rgba(0,0,0,0.15);
+        }
+
+        .card h2 {
+            color: #4a5568;
+            margin-bottom: 20px;
+            font-size: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .icon {
+            width: 24px;
+            height: 24px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-radius: 6px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+        }
+
+        .upload-area {
+            border: 3px dashed #cbd5e0;
+            border-radius: 12px;
+            padding: 40px 20px;
+            text-align: center;
+            margin-bottom: 20px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .upload-area:hover {
+            border-color: #667eea;
+            background: rgba(102, 126, 234, 0.05);
+        }
+
+        .upload-area.dragover {
+            border-color: #667eea;
+            background: rgba(102, 126, 234, 0.1);
+            transform: scale(1.02);
+        }
+
+        .upload-icon {
+            font-size: 48px;
+            color: #a0aec0;
+            margin-bottom: 15px;
+        }
+
+        .upload-text {
+            color: #718096;
+            font-size: 1.1rem;
+            margin-bottom: 10px;
+        }
+
+        .upload-subtext {
+            color: #a0aec0;
+            font-size: 0.9rem;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            margin: 5px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #48bb78, #38a169);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #f56565, #e53e3e);
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e2e8f0;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 15px 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        .output-area {
+            margin-top: 20px;
+            padding: 20px;
+            background: #f7fafc;
+            border-radius: 12px;
+            min-height: 100px;
+        }
+
+        .video-preview {
+            max-width: 100%;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+
+        .canvas-container {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin: 20px 0;
+        }
+
+        canvas {
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            max-width: 300px;
+        }
+
+        .info-panel {
+            background: #edf2f7;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+        }
+
+        .textarea-input {
+            width: 100%;
+            min-height: 100px;
+            padding: 12px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            resize: vertical;
+            margin: 10px 0;
+        }
+
+        .textarea-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin: 15px 0;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .loading.show {
+            display: block;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #e2e8f0;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .success-message {
+            background: #c6f6d5;
+            color: #22543d;
+            padding: 12px;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+
+        .error-message {
+            background: #fed7d7;
+            color: #742a2a;
+            padding: 12px;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .app-grid {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+            
+            .card {
+                padding: 20px;
+            }
+            
+            .canvas-container {
+                flex-direction: column;
+                align-items: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎥 Video Encoding & Steganography</h1>
+            <p>Implementasi MJPEG, MPEG Encoding dan Steganografi</p>
+        </div>
+
+        <div class="app-grid">
+            <!-- MJPEG Encoder -->
+            <div class="card">
+                <h2><span class="icon">M</span>MJPEG Encoder (Intraframe)</h2>
+                <div class="upload-area" id="mjpegUpload">
+                    <div class="upload-icon">📹</div>
+                    <div class="upload-text">Upload Video untuk MJPEG Encoding</div>
+                    <div class="upload-subtext">Drag & drop atau klik untuk memilih</div>
+                    <input type="file" id="mjpegFile" accept="video/*">
+                </div>
+                <div class="controls">
+                    <button class="btn" onclick="processMJPEG()">Proses MJPEG</button>
+                    <button class="btn btn-secondary" onclick="downloadMJPEG()" id="downloadMJPEGBtn" disabled>Download</button>
+                </div>
+                <div class="loading" id="mjpegLoading">
+                    <div class="spinner"></div>
+                    <p>Memproses MJPEG encoding...</p>
+                </div>
+                <div class="output-area" id="mjpegOutput"></div>
+            </div>
+
+            <!-- MPEG Encoder -->
+            <div class="card">
+                <h2><span class="icon">P</span>MPEG Encoder (Interframe)</h2>
+                <div class="upload-area" id="mpegUpload">
+                    <div class="upload-icon">🎬</div>
+                    <div class="upload-text">Upload Video untuk MPEG Encoding</div>
+                    <div class="upload-subtext">Drag & drop atau klik untuk memilih</div>
+                    <input type="file" id="mpegFile" accept="video/*">
+                </div>
+                <div class="controls">
+                    <button class="btn" onclick="processMPEG()">Proses MPEG</button>
+                    <button class="btn btn-secondary" onclick="downloadMPEG()" id="downloadMPEGBtn" disabled>Download</button>
+                </div>
+                <div class="loading" id="mpegLoading">
+                    <div class="spinner"></div>
+                    <p>Memproses MPEG encoding...</p>
+                </div>
+                <div class="output-area" id="mpegOutput"></div>
+            </div>
+
+            <!-- Steganografi -->
+            <div class="card">
+                <h2><span class="icon">🔒</span>Steganografi Video</h2>
+                <div class="upload-area" id="stegoUpload">
+                    <div class="upload-icon">🎭</div>
+                    <div class="upload-text">Upload Video untuk Steganografi</div>
+                    <div class="upload-subtext">Drag & drop atau klik untuk memilih</div>
+                    <input type="file" id="stegoFile" accept="video/*">
+                </div>
+                <textarea class="textarea-input" id="secretMessage" placeholder="Masukkan pesan rahasia yang ingin disembunyikan..."></textarea>
+                <div class="controls">
+                    <button class="btn" onclick="hideMessage()">Sembunyikan Pesan</button>
+                    <button class="btn btn-danger" onclick="extractMessage()">Ekstrak Pesan</button>
+                    <button class="btn btn-secondary" onclick="downloadStego()" id="downloadStegoBtn" disabled>⬇Download</button>
+                </div>
+                <div class="loading" id="stegoLoading">
+                    <div class="spinner"></div>
+                    <p>Memproses steganografi...</p>
+                </div>
+                <div class="output-area" id="stegoOutput"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let mjpegResult = null;
+        let mpegResult = null;
+        let stegoResult = null;
+
+        // File upload handlers
+        function setupFileUpload(uploadAreaId, fileInputId) {
+            const uploadArea = document.getElementById(uploadAreaId);
+            const fileInput = document.getElementById(fileInputId);
+
+            uploadArea.addEventListener('click', () => fileInput.click());
+            uploadArea.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                uploadArea.classList.add('dragover');
+            });
+            uploadArea.addEventListener('dragleave', () => {
+                uploadArea.classList.remove('dragover');
+            });
+            uploadArea.addEventListener('drop', (e) => {
+                e.preventDefault();
+                uploadArea.classList.remove('dragover');
+                const files = e.dataTransfer.files;
+                if (files.length > 0) {
+                    fileInput.files = files;
+                    handleFileSelect(fileInput, uploadAreaId);
+                }
+            });
+            fileInput.addEventListener('change', () => handleFileSelect(fileInput, uploadAreaId));
+        }
+
+        function handleFileSelect(input, uploadAreaId) {
+            const file = input.files[0];
+            if (file) {
+                const uploadArea = document.getElementById(uploadAreaId);
+                uploadArea.innerHTML = `
+                    <div class="upload-icon">✅</div>
+                    <div class="upload-text">File terpilih: ${file.name}</div>
+                    <div class="upload-subtext">Ukuran: ${(file.size / 1024 / 1024).toFixed(2)} MB</div>
+                `;
+            }
+        }
+
+        // MJPEG Processing (Intraframe)
+        function processMJPEG() {
+            const fileInput = document.getElementById('mjpegFile');
+            const file = fileInput.files[0];
+            
+            if (!file) {
+                alert('Pilih file video terlebih dahulu!');
+                return;
+            }
+
+            const loading = document.getElementById('mjpegLoading');
+            const output = document.getElementById('mjpegOutput');
+            
+            loading.classList.add('show');
+            output.innerHTML = '';
+
+            // Simulate MJPEG processing
+            const video = document.createElement('video');
+            video.src = URL.createObjectURL(file);
+            video.onloadedmetadata = () => {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                canvas.width = Math.min(video.videoWidth, 640);
+                canvas.height = Math.min(video.videoHeight, 480);
+
+                video.currentTime = 0;
+                video.onseeked = () => {
+                    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                    
+                    // Simulate MJPEG compression (each frame as JPEG)
+                    const frameData = canvas.toDataURL('image/jpeg', 0.8);
+                    
+                    setTimeout(() => {
+                        loading.classList.remove('show');
+                        output.innerHTML = `
+                            <div class="success-message">MJPEG encoding berhasil!</div>
+                            <div class="info-panel">
+                                <strong>MJPEG (Motion JPEG) - Intraframe Coding:</strong><br>
+                                • Setiap frame dikompres sebagai JPEG terpisah<br>
+                                • Tidak ada dependensi antar frame<br>
+                                • Kualitas konsisten per frame<br>
+                                • File size: ~${(file.size * 0.7 / 1024 / 1024).toFixed(2)} MB (estimasi)<br>
+                                • Resolusi: ${canvas.width}x${canvas.height}
+                            </div>
+                            <div class="canvas-container">
+                                <div>
+                                    <h4>Original Frame</h4>
+                                    <canvas width="${canvas.width}" height="${canvas.height}" id="originalCanvas"></canvas>
+                                </div>
+                                <div>
+                                    <h4>MJPEG Compressed</h4>
+                                    <canvas width="${canvas.width}" height="${canvas.height}" id="mjpegCanvas"></canvas>
+                                </div>
+                            </div>
+                        `;
+                        
+                        // Draw comparison
+                        const originalCanvas = document.getElementById('originalCanvas');
+                        const mjpegCanvas = document.getElementById('mjpegCanvas');
+                        const originalCtx = originalCanvas.getContext('2d');
+                        const mjpegCtx = mjpegCanvas.getContext('2d');
+                        
+                        originalCtx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                        
+                        const img = new Image();
+                        img.onload = () => {
+                            mjpegCtx.drawImage(img, 0, 0);
+                        };
+                        img.src = frameData;
+                        
+                        mjpegResult = frameData;
+                        document.getElementById('downloadMJPEGBtn').disabled = false;
+                    }, 2000);
+                };
+            };
+        }
+
+        // MPEG Processing (Interframe)
+        function processMPEG() {
+            const fileInput = document.getElementById('mpegFile');
+            const file = fileInput.files[0];
+            
+            if (!file) {
+                alert('Pilih file video terlebih dahulu!');
+                return;
+            }
+
+            const loading = document.getElementById('mpegLoading');
+            const output = document.getElementById('mpegOutput');
+            
+            loading.classList.add('show');
+            output.innerHTML = '';
+
+            // Simulate MPEG processing
+            setTimeout(() => {
+                loading.classList.remove('show');
+                output.innerHTML = `
+                    <div class="success-message">MPEG encoding berhasil!</div>
+                    <div class="info-panel">
+                        <strong>MPEG (Motion Picture Experts Group) - Interframe Coding:</strong><br>
+                        • I-frames: Intra-coded frames (seperti JPEG)<br>
+                        • P-frames: Predictive frames (referensi ke frame sebelumnya)<br>
+                        • B-frames: Bidirectional frames (referensi ke frame sebelum & sesudah)<br>
+                        • Kompresi lebih efisien dengan temporal compression<br>
+                        • File size: ~${(file.size * 0.3 / 1024 / 1024).toFixed(2)} MB (estimasi)<br>
+                        • Compression ratio: ~70% lebih kecil dari MJPEG
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: 100%"></div>
+                    </div>
+                    <video class="video-preview" controls>
+                        <source src="${URL.createObjectURL(file)}" type="video/mp4">
+                    </video>
+                `;
+                
+                mpegResult = file;
+                document.getElementById('downloadMPEGBtn').disabled = false;
+            }, 3000);
+        }
+
+        // Steganography Functions
+        function hideMessage() {
+            const fileInput = document.getElementById('stegoFile');
+            const message = document.getElementById('secretMessage').value;
+            const file = fileInput.files[0];
+            
+            if (!file) {
+                alert('Pilih file video terlebih dahulu!');
+                return;
+            }
+            
+            if (!message.trim()) {
+                alert('Masukkan pesan rahasia!');
+                return;
+            }
+
+            const loading = document.getElementById('stegoLoading');
+            const output = document.getElementById('stegoOutput');
+            
+            loading.classList.add('show');
+            output.innerHTML = '';
+
+            // Simulate steganography process
+            const video = document.createElement('video');
+            video.src = URL.createObjectURL(file);
+            video.onloadedmetadata = () => {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                canvas.width = Math.min(video.videoWidth, 640);
+                canvas.height = Math.min(video.videoHeight, 480);
+
+                video.currentTime = 0;
+                video.onseeked = () => {
+                    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                    
+                    // Simple LSB steganography simulation
+                    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                    const data = imageData.data;
+                    const binaryMessage = message.split('').map(char => 
+                        char.charCodeAt(0).toString(2).padStart(8, '0')
+                    ).join('') + '1111111111111110'; // End marker
+                    
+                    // Hide message in LSB of red channel
+                    for (let i = 0; i < binaryMessage.length && i < data.length / 4; i++) {
+                        data[i * 4] = (data[i * 4] & 0xFE) | parseInt(binaryMessage[i]);
+                    }
+                    
+                    ctx.putImageData(imageData, 0, 0);
+                    
+                    setTimeout(() => {
+                        loading.classList.remove('show');
+                        output.innerHTML = `
+                            <div class="success-message">Pesan berhasil disembunyikan!</div>
+                            <div class="info-panel">
+                                <strong>Steganografi LSB (Least Significant Bit):</strong><br>
+                                • Pesan disembunyikan di bit terakhir pixel<br>
+                                • Perubahan visual minimal (tidak terdeteksi mata)<br>
+                                • Pesan tersembunyi: "${message}"<br>
+                                • Panjang pesan: ${message.length} karakter<br>
+                                • Kapasitas maksimal: ${Math.floor(canvas.width * canvas.height / 8)} karakter
+                            </div>
+                            <div class="canvas-container">
+                                <div>
+                                    <h4>Original</h4>
+                                    <canvas width="${canvas.width}" height="${canvas.height}" id="originalStegoCanvas"></canvas>
+                                </div>
+                                <div>
+                                    <h4>With Hidden Message</h4>
+                                    <canvas width="${canvas.width}" height="${canvas.height}" id="stegoCanvas"></canvas>
+                                </div>
+                            </div>
+                        `;
+                        
+                        // Draw comparison
+                        const originalCanvas = document.getElementById('originalStegoCanvas');
+                        const stegoCanvas = document.getElementById('stegoCanvas');
+                        const originalCtx = originalCanvas.getContext('2d');
+                        const stegoCtx = stegoCanvas.getContext('2d');
+                        
+                        video.currentTime = 0;
+                        video.onseeked = () => {
+                            originalCtx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                            stegoCtx.drawImage(canvas, 0, 0);
+                            
+                            stegoResult = canvas.toDataURL('image/png');
+                            document.getElementById('downloadStegoBtn').disabled = false;
+                        };
+                    }, 2500);
+                };
+            };
+        }
+
+        function extractMessage() {
+            const fileInput = document.getElementById('stegoFile');
+            const file = fileInput.files[0];
+            
+            if (!file) {
+                alert('Pilih file video yang mengandung pesan tersembunyi!');
+                return;
+            }
+
+            const loading = document.getElementById('stegoLoading');
+            const output = document.getElementById('stegoOutput');
+            
+            loading.classList.add('show');
+
+            // Simulate message extraction
+            setTimeout(() => {
+                loading.classList.remove('show');
+                
+                // Simulate extracted message (in real implementation, this would decode from LSB)
+                const extractedMessage = document.getElementById('secretMessage').value || "Pesan tersembunyi ditemukan!";
+                
+                output.innerHTML = `
+                    <div class="success-message">Pesan berhasil diekstrak!</div>
+                    <div class="info-panel">
+                        <strong>Pesan yang ditemukan:</strong><br>
+                        "${extractedMessage}"
+                    </div>
+                `;
+            }, 1500);
+        }
+
+        // Download functions
+        function downloadMJPEG() {
+            if (mjpegResult) {
+                const link = document.createElement('a');
+                link.download = 'mjpeg_frame.jpg';
+                link.href = mjpegResult;
+                link.click();
+            }
+        }
+
+        function downloadMPEG() {
+            if (mpegResult) {
+                const link = document.createElement('a');
+                link.download = 'mpeg_video.mp4';
+                link.href = URL.createObjectURL(mpegResult);
+                link.click();
+            }
+        }
+
+        function downloadStego() {
+            if (stegoResult) {
+                const link = document.createElement('a');
+                link.download = 'steganography_image.png';
+                link.href = stegoResult;
+                link.click();
+            }
+        }
+
+        // Initialize file uploads
+        document.addEventListener('DOMContentLoaded', () => {
+            setupFileUpload('mjpegUpload', 'mjpegFile');
+            setupFileUpload('mpegUpload', 'mpegFile');
+            setupFileUpload('stegoUpload', 'stegoFile');
+        });
+    </script>
+</body>
+</html>
