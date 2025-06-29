@@ -440,9 +440,8 @@
             loading.classList.add('show');
             output.innerHTML = '';
 
-            // Pastikan FFmpeg tersedia
             if (!window.FFmpeg) {
-                alert('FFmpeg belum termuat. Periksa koneksi internet atau CDN.');
+                alert('FFmpeg belum termuat. Pastikan koneksi internet aktif dan script CDN benar.');
                 loading.classList.remove('show');
                 return;
             }
@@ -450,6 +449,7 @@
             const { createFFmpeg, fetchFile } = FFmpeg;
             const ffmpeg = createFFmpeg({ log: true });
 
+            output.innerHTML = '<p>Loading ffmpeg.wasm, mohon tunggu beberapa detik...</p>';
             await ffmpeg.load();
 
             ffmpeg.FS('writeFile', 'input.mp4', await fetchFile(file));
@@ -476,7 +476,6 @@
             mjpegResult = mjpegBlob;
             document.getElementById('downloadMJPEGBtn').disabled = false;
         }
-
 
 
         // MPEG Processing (Interframe)
