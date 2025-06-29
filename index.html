@@ -380,7 +380,6 @@
         let mjpegResult = null;
         let mpegResult = null;
         let stegoResult = null;
-        const { createFFmpeg, fetchFile } = FFmpeg;
 
         // File upload handlers
         function setupFileUpload(uploadAreaId, fileInputId) {
@@ -411,20 +410,18 @@
             const file = input.files[0];
             if (file) {
                 const uploadArea = document.getElementById(uploadAreaId);
-                
-                // Ambil elemen input file sebelum mengganti isi HTML
-                const inputClone = input.cloneNode();
-                
+
                 uploadArea.innerHTML = `
                     <div class="upload-icon">✅</div>
                     <div class="upload-text">File terpilih: ${file.name}</div>
                     <div class="upload-subtext">Ukuran: ${(file.size / 1024 / 1024).toFixed(2)} MB</div>
                 `;
-                
-                uploadArea.appendChild(inputClone); // tambahkan input kembali
-                setupFileUpload(uploadAreaId, inputClone.id); // sambungkan lagi event-nya
+
+                uploadArea.appendChild(input); // tambahkan kembali input asli (bukan clone)
+                setupFileUpload(uploadAreaId, input.id); // reattach events
             }
         }
+
 
 
         // MJPEG Processing (Intraframe)
@@ -443,7 +440,13 @@
             loading.classList.add('show');
             output.innerHTML = '';
 
-            // Ambil dari window.FFmpeg
+            // Pastikan FFmpeg tersedia
+            if (!window.FFmpeg) {
+                alert('FFmpeg belum termuat. Periksa koneksi internet atau CDN.');
+                loading.classList.remove('show');
+                return;
+            }
+
             const { createFFmpeg, fetchFile } = FFmpeg;
             const ffmpeg = createFFmpeg({ log: true });
 
@@ -473,6 +476,7 @@
             mjpegResult = mjpegBlob;
             document.getElementById('downloadMJPEGBtn').disabled = false;
         }
+
 
 
         // MPEG Processing (Interframe)
@@ -546,72 +550,37 @@
             output.innerHTML = '';
 
             // Simulate steganography process
-            const video = document.createElement('video');
-            video.src = URL.createObjectURL(file);
-            video.onloadedmetadata = () => {
+            const img = new Image();
+            img.src = URL.createObjectURL(file);
+            img.onload = () => {
                 const canvas = document.createElement('canvas');
                 const ctx = canvas.getContext('2d');
-                canvas.width = Math.min(video.videoWidth, 640);
-                canvas.height = Math.min(video.videoHeight, 480);
+                canvas.width = img.width;
+                canvas.height = img.height;
 
-                video.currentTime = 0;
-                video.onseeked = () => {
-                    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-                    
-                    // Simple LSB steganography simulation
-                    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-                    const data = imageData.data;
-                    const binaryMessage = message.split('').map(char => 
-                        char.charCodeAt(0).toString(2).padStart(8, '0')
-                    ).join('') + '1111111111111110'; // End marker
-                    
-                    // Hide message in LSB of red channel
-                    for (let i = 0; i < binaryMessage.length && i < data.length / 4; i++) {
-                        data[i * 4] = (data[i * 4] & 0xFE) | parseInt(binaryMessage[i]);
-                    }
-                    
-                    ctx.putImageData(imageData, 0, 0);
-                    
-                    setTimeout(() => {
-                        loading.classList.remove('show');
-                        output.innerHTML = `
-                            <div class="success-message">Pesan berhasil disembunyikan!</div>
-                            <div class="info-panel">
-                                <strong>Steganografi LSB (Least Significant Bit):</strong><br>
-                                • Pesan disembunyikan di bit terakhir pixel<br>
-                                • Perubahan visual minimal (tidak terdeteksi mata)<br>
-                                • Pesan tersembunyi: "${message}"<br>
-                                • Panjang pesan: ${message.length} karakter<br>
-                                • Kapasitas maksimal: ${Math.floor(canvas.width * canvas.height / 8)} karakter
-                            </div>
-                            <div class="canvas-container">
-                                <div>
-                                    <h4>Original</h4>
-                                    <canvas width="${canvas.width}" height="${canvas.height}" id="originalStegoCanvas"></canvas>
-                                </div>
-                                <div>
-                                    <h4>With Hidden Message</h4>
-                                    <canvas width="${canvas.width}" height="${canvas.height}" id="stegoCanvas"></canvas>
-                                </div>
-                            </div>
-                        `;
-                        
-                        // Draw comparison
-                        const originalCanvas = document.getElementById('originalStegoCanvas');
-                        const stegoCanvas = document.getElementById('stegoCanvas');
-                        const originalCtx = originalCanvas.getContext('2d');
-                        const stegoCtx = stegoCanvas.getContext('2d');
-                        
-                        video.currentTime = 0;
-                        video.onseeked = () => {
-                            originalCtx.drawImage(video, 0, 0, canvas.width, canvas.height);
-                            stegoCtx.drawImage(canvas, 0, 0);
-                            
-                            stegoResult = canvas.toDataURL('image/png');
-                            document.getElementById('downloadStegoBtn').disabled = false;
-                        };
-                    }, 2500);
-                };
+                ctx.drawImage(img, 0, 0);
+
+                // Proses LSB steganografi
+                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const data = imageData.data;
+                const binaryMessage = message.split('').map(char => 
+                    char.charCodeAt(0).toString(2).padStart(8, '0')
+                ).join('') + '1111111111111110'; // end marker
+
+                for (let i = 0; i < binaryMessage.length && i < data.length / 4; i++) {
+                    data[i * 4] = (data[i * 4] & 0xFE) | parseInt(binaryMessage[i]);
+                }
+
+                ctx.putImageData(imageData, 0, 0);
+
+                loading.classList.remove('show');
+                output.innerHTML = `
+                    <div class="success-message">Pesan berhasil disembunyikan!</div>
+                    <img src="${canvas.toDataURL('image/png')}" class="video-preview"/>
+                `;
+
+                stegoResult = canvas.toDataURL('image/png');
+                document.getElementById('downloadStegoBtn').disabled = false;
             };
         }
 
