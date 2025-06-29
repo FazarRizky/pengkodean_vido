@@ -373,6 +373,8 @@
         </div>
     </div>
 
+    <script src="https://unpkg.com/@ffmpeg/ffmpeg@0.12.6/dist/ffmpeg.min.js"></script>
+
     <script>
         // Global variables
         let mjpegResult = null;
@@ -425,10 +427,10 @@
 
 
         // MJPEG Processing (Intraframe)
-        function processMJPEG() {
+        async function processMJPEG() {
             const fileInput = document.getElementById('mjpegFile');
             const file = fileInput.files[0];
-            
+
             if (!file) {
                 alert('Pilih file video terlebih dahulu!');
                 return;
@@ -436,69 +438,45 @@
 
             const loading = document.getElementById('mjpegLoading');
             const output = document.getElementById('mjpegOutput');
-            
+
             loading.classList.add('show');
             output.innerHTML = '';
 
-            // Simulate MJPEG processing
-            const video = document.createElement('video');
-            video.src = URL.createObjectURL(file);
-            video.onloadedmetadata = () => {
-                const canvas = document.createElement('canvas');
-                const ctx = canvas.getContext('2d');
-                canvas.width = Math.min(video.videoWidth, 640);
-                canvas.height = Math.min(video.videoHeight, 480);
+            // Initialize ffmpeg.wasm
+            const { createFFmpeg, fetchFile } = FFmpeg;
+            const ffmpeg = createFFmpeg({ log: true });
 
-                video.currentTime = 0;
-                video.onseeked = () => {
-                    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-                    
-                    // Simulate MJPEG compression (each frame as JPEG)
-                    const frameData = canvas.toDataURL('image/jpeg', 0.8);
-                    
-                    setTimeout(() => {
-                        loading.classList.remove('show');
-                        output.innerHTML = `
-                            <div class="success-message">MJPEG encoding berhasil!</div>
-                            <div class="info-panel">
-                                <strong>MJPEG (Motion JPEG) - Intraframe Coding:</strong><br>
-                                • Setiap frame dikompres sebagai JPEG terpisah<br>
-                                • Tidak ada dependensi antar frame<br>
-                                • Kualitas konsisten per frame<br>
-                                • File size: ~${(file.size * 0.7 / 1024 / 1024).toFixed(2)} MB (estimasi)<br>
-                                • Resolusi: ${canvas.width}x${canvas.height}
-                            </div>
-                            <div class="canvas-container">
-                                <div>
-                                    <h4>Original Frame</h4>
-                                    <canvas width="${canvas.width}" height="${canvas.height}" id="originalCanvas"></canvas>
-                                </div>
-                                <div>
-                                    <h4>MJPEG Compressed</h4>
-                                    <canvas width="${canvas.width}" height="${canvas.height}" id="mjpegCanvas"></canvas>
-                                </div>
-                            </div>
-                        `;
-                        
-                        // Draw comparison
-                        const originalCanvas = document.getElementById('originalCanvas');
-                        const mjpegCanvas = document.getElementById('mjpegCanvas');
-                        const originalCtx = originalCanvas.getContext('2d');
-                        const mjpegCtx = mjpegCanvas.getContext('2d');
-                        
-                        originalCtx.drawImage(video, 0, 0, canvas.width, canvas.height);
-                        
-                        const img = new Image();
-                        img.onload = () => {
-                            mjpegCtx.drawImage(img, 0, 0);
-                        };
-                        img.src = frameData;
-                        
-                        mjpegResult = frameData;
-                        document.getElementById('downloadMJPEGBtn').disabled = false;
-                    }, 2000);
-                };
-            };
+            await ffmpeg.load();
+
+            // Write uploaded file to ffmpeg FS
+            ffmpeg.FS('writeFile', 'input.mp4', await fetchFile(file));
+
+            // Run ffmpeg command to re-encode as MJPEG AVI
+            await ffmpeg.run(
+                '-i', 'input.mp4',
+                '-c:v', 'mjpeg',
+                '-qscale:v', '3', // quality (lower is better quality, max 31)
+                '-an',
+                'output.avi'
+            );
+
+            // Read encoded file from ffmpeg FS
+            const data = ffmpeg.FS('readFile', 'output.avi');
+
+            // Convert to Blob for download
+            const mjpegBlob = new Blob([data.buffer], { type: 'video/avi' });
+            const mjpegURL = URL.createObjectURL(mjpegBlob);
+
+            // Display result
+            loading.classList.remove('show');
+            output.innerHTML = `
+                <div class="success-message">MJPEG encoding berhasil!</div>
+                <video class="video-preview" controls src="${mjpegURL}"></video>
+            `;
+
+            // Enable download
+            mjpegResult = mjpegBlob;
+            document.getElementById('downloadMJPEGBtn').disabled = false;
         }
 
         // MPEG Processing (Interframe)
@@ -676,11 +654,12 @@
         function downloadMJPEG() {
             if (mjpegResult) {
                 const link = document.createElement('a');
-                link.download = 'mjpeg_frame.jpg';
-                link.href = mjpegResult;
+                link.download = 'mjpeg_video.avi';
+                link.href = URL.createObjectURL(mjpegResult);
                 link.click();
             }
         }
+
 
         function downloadMPEG() {
             if (mpegResult) {
