@@ -354,9 +354,9 @@
                 <h2><span class="icon">🔒</span>Steganografi Video</h2>
                 <div class="upload-area" id="stegoUpload">
                     <div class="upload-icon">🎭</div>
-                    <div class="upload-text">Upload Video untuk Steganografi</div>
+                    <div class="upload-text">Upload gambar untuk Steganografi</div>
                     <div class="upload-subtext">Drag & drop atau klik untuk memilih</div>
-                    <input type="file" id="stegoFile" accept="video/*">
+                    <input type="file" id="stegoFile" accept="image/png, image/jpeg, image/jpg">
                 </div>
                 <textarea class="textarea-input" id="secretMessage" placeholder="Masukkan pesan rahasia yang ingin disembunyikan..."></textarea>
                 <div class="controls">
@@ -551,10 +551,15 @@
             const file = fileInput.files[0];
             
             if (!file) {
-                alert('Pilih file video terlebih dahulu!');
+                alert('Pilih file gambar terlebih dahulu!');
                 return;
             }
-            
+
+            if (!file.type.startsWith('image/')) {
+                alert('Hanya gambar (PNG, JPG) yang didukung untuk steganografi!');
+                return;
+            }
+
             if (!message.trim()) {
                 alert('Masukkan pesan rahasia!');
                 return;
